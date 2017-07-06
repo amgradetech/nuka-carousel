@@ -172,17 +172,6 @@ const Carousel = React.createClass({
             {children}
           </ul>
         </div>
-        {/*currentSlide={self.state.currentSlide}*/}
-        {/*slideCount={self.state.slideCount}*/}
-        {/*frameWidth={self.state.frameWidth}*/}
-        {/*slideWidth={self.state.slideWidth}*/}
-        {/*slidesToScroll={self.state.slidesToScroll}*/}
-        {/*cellSpacing={self.props.cellSpacing}*/}
-        {/*slidesToShow={self.props.slidesToShow}*/}
-        {/*wrapAround={self.props.wrapAround}*/}
-        {/*nextSlide={self.nextSlide}*/}
-        {/*previousSlide={self.previousSlide}*/}
-        {/*goToSlide={self.goToSlide}*/}
         <div className="slider-controls">
           <button
             className={
@@ -733,11 +722,21 @@ const Carousel = React.createClass({
   // Styles
 
   getListStyles() {
-    var listWidth = this.state.slideWidth * React.Children.count(this.props.children);
+    var listWidth;
+    var width = 'auto';
     var spacingOffset = this.props.cellSpacing * React.Children.count(this.props.children);
     var transform = 'translate3d(' +
       this.getTweeningValue('left') + 'px, ' +
-      this.getTweeningValue('top') + 'px, 0)'
+      this.getTweeningValue('top') + 'px, 0)';
+
+    if (!this.props.vertical) {
+      if (typeof this.state.slideWidth === 'string') {
+        width = this.state.slideWidth;
+      } else if (typeof this.state.slideWidth === 'number') {
+        width = this.state.slideWidth * React.Children.count(this.props.children) + spacingOffset
+      }
+    }
+
     return {
       transform,
       WebkitTransform: transform,
@@ -750,7 +749,7 @@ const Carousel = React.createClass({
         : '0px ' + (this.props.cellSpacing / 2) * -1 + 'px',
       padding: 0,
       height: this.props.vertical ? listWidth + spacingOffset : this.state.slideHeight,
-      width: this.props.vertical ? 'auto' : listWidth + spacingOffset,
+      width: width,
       cursor: this.state.dragging === true ? 'pointer' : 'inherit',
       boxSizing: 'border-box',
       MozBoxSizing: 'border-box'
