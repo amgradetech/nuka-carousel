@@ -647,26 +647,23 @@ const Carousel = React.createClass({
     });
   },
 
-  setDimensions(props) {
+  _setDimensions(props, firstSlideOffsetHeight) {
     props = props || this.props;
 
     var self = this,
       slideWidth,
       slidesToScroll,
-      firstSlide,
       frame,
       frameWidth,
-      frameHeight,
-      slideHeight;
-
-    slidesToScroll = props.slidesToScroll;
+      slideHeight,
+      frameHeight;
     frame = this.refs.frame;
-    firstSlide = frame.childNodes[0].childNodes[0];
-    if (firstSlide) {
-      firstSlide.style.height = 'auto';
+    slidesToScroll = props.slidesToScroll;
+
+    if (typeof firstSlideOffsetHeight !== 'undefined') {
       slideHeight = this.props.vertical ?
-      firstSlide.offsetHeight * props.slidesToShow :
-        firstSlide.offsetHeight;
+      firstSlideOffsetHeight * props.slidesToShow
+        : firstSlideOffsetHeight;
     } else {
       slideHeight = 100;
     }
@@ -704,6 +701,41 @@ const Carousel = React.createClass({
     });
   },
 
+  setDimensions(props) {
+    const self = this;
+    const frame = this.refs.frame;
+    const firstSlide = frame.childNodes[0].childNodes[0];
+    let firstSlideImages;
+
+    if (firstSlide) {
+      firstSlide.style.height = 'auto';
+      firstSlideImages = firstSlide.querySelectorAll('img');
+    } else {
+      this._setDimensions(props);
+      return;
+    }
+
+    // we need to await for all images to be loaded before calc slider height
+    if (firstSlideImages.length) {
+      let imagesLoadedProgress = 0;
+
+      const imageLoaded = (imgNode) => {
+        imagesLoadedProgress++;
+        imgNode.onload = undefined;
+
+        if (imagesLoadedProgress === firstSlideImages.length) {
+          self._setDimensions(props, firstSlide.offsetHeight)
+        }
+      };
+
+      Array.prototype.slice.apply(firstSlideImages).forEach(imgNode => {
+        imgNode.onload = imageLoaded(imgNode);
+      });
+    } else {
+      this._setDimensions(props, firstSlide.offsetHeight);
+    }
+  },
+
   setLeft() {
     this.setState({
       left: this.props.vertical ? 0 : this.getTargetLeft(),
@@ -722,21 +754,11 @@ const Carousel = React.createClass({
   // Styles
 
   getListStyles() {
-    var listWidth;
-    var width = 'auto';
+    var listWidth = this.state.slideWidth * React.Children.count(this.props.children);
     var spacingOffset = this.props.cellSpacing * React.Children.count(this.props.children);
     var transform = 'translate3d(' +
       this.getTweeningValue('left') + 'px, ' +
-      this.getTweeningValue('top') + 'px, 0)';
-
-    if (!this.props.vertical) {
-      if (typeof this.state.slideWidth === 'string') {
-        width = this.state.slideWidth;
-      } else if (typeof this.state.slideWidth === 'number') {
-        width = this.state.slideWidth * React.Children.count(this.props.children) + spacingOffset
-      }
-    }
-
+      this.getTweeningValue('top') + 'px, 0)'
     return {
       transform,
       WebkitTransform: transform,
@@ -749,7 +771,7 @@ const Carousel = React.createClass({
         : '0px ' + (this.props.cellSpacing / 2) * -1 + 'px',
       padding: 0,
       height: this.props.vertical ? listWidth + spacingOffset : this.state.slideHeight,
-      width: width,
+      width: this.props.vertical ? 'auto' : listWidth + spacingOffset,
       cursor: this.state.dragging === true ? 'pointer' : 'inherit',
       boxSizing: 'border-box',
       MozBoxSizing: 'border-box'
@@ -781,7 +803,7 @@ const Carousel = React.createClass({
       display: this.props.vertical ? 'block' : 'inline-block',
       listStyleType: 'none',
       verticalAlign: 'top',
-      width: this.props.vertical ? '100%' : this.state.slideWidth,
+      width: this.props.vertical ? '100%' : (this.state.slideWidth || 'auto'),
       height: 'auto',
       boxSizing: 'border-box',
       MozBoxSizing: 'border-box',
